@@ -1,0 +1,38 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: dynamicqr_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dynamicqr_app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - BASE_URL=http://localhost:8080
+      - MONGO_URI=mongodb://mongo:27017
+      - MONGO_DB=dynamicqr_db
+      - READ_TIMEOUT=5s
+      - WRITE_TIMEOUT=10s
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  mongo_data:
+    driver: local

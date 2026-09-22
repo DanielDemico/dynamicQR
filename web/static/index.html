@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DynamicQR — Gerador de QR Code Dinâmico</title>
+  <meta name="description" content="Crie, gerencie e redirecione QR Codes Dinâmicos em tempo real sem precisar reimprimir.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-container">
+      <a href="/" class="brand">
+        <div class="brand-icon">⚡</div>
+        <div class="brand-info">
+          <h1>DynamicQR</h1>
+          <p>QR Codes Dinâmicos & Redirecionamento</p>
+        </div>
+      </a>
+
+      <button id="btnOpenCreateModal" class="btn btn-primary" onclick="UI.openModal('createModal')">
+        <span>+</span> Novo QR Code
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    
+    <!-- Top Metrics -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-icon-wrapper metric-icon-primary">
+          <span>📊</span>
+        </div>
+        <div class="metric-data">
+          <h3>Total de QR Codes</h3>
+          <div id="metricTotalQRs" class="metric-value">0</div>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon-wrapper metric-icon-accent">
+          <span>🚀</span>
+        </div>
+        <div class="metric-data">
+          <h3>Total de Leituras / Scans</h3>
+          <div id="metricTotalClicks" class="metric-value">0</div>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon-wrapper metric-icon-success">
+          <span>🟢</span>
+        </div>
+        <div class="metric-data">
+          <h3>Servidor & MongoDB</h3>
+          <div id="metricServerStatus" class="metric-value" style="font-size: 1.4rem;">Online</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Action & Search Bar -->
+    <section class="action-bar">
+      <div class="search-box">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        <input type="text" id="searchInput" class="search-input" placeholder="Buscar por título, slug ou destino...">
+      </div>
+
+      <button id="btnRefresh" class="btn btn-secondary btn-sm" onclick="App.loadData()">
+        🔄 Atualizar
+      </button>
+    </section>
+
+    <!-- QR Cards Grid -->
+    <section id="qrGrid" class="qr-grid">
+      <!-- Cards rendered dynamically via ui.js -->
+    </section>
+
+  </main>
+
+  <!-- Modal: Criar QR Code -->
+  <div id="createModal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Criar QR Code Dinâmico</h2>
+        <button class="btn-close" onclick="UI.closeModal('createModal')">&times;</button>
+      </div>
+      <form id="createForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="createTitle">Identificador / Título *</label>
+            <input type="text" id="createTitle" class="form-input" placeholder="Ex: Cardápio do Bar, Mesa 12, Promoção" required>
+            <div class="form-hint">Nome amigável para você gerenciar no painel.</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="createTarget">URL de Destino *</label>
+            <input type="text" id="createTarget" class="form-input" placeholder="https://meusite.com.br/meu-link" required>
+            <div class="form-hint">Apenas links válidos (HTTP/HTTPS). Você poderá trocar a qualquer momento!</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="createSlug">Slug Customizado <span>(opcional)</span></label>
+            <input type="text" id="createSlug" class="form-input" placeholder="Ex: cardapio, mesa12 (deixe vazio para aleatório)">
+            <div class="form-hint">O QR Code apontará para o encurtador com este slug.</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="UI.closeModal('createModal')">Cancelar</button>
+          <button type="submit" id="btnSubmitCreate" class="btn btn-primary">Criar QR Code</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Editar QR Code -->
+  <div id="editModal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Editar Destino Dinâmico</h2>
+        <button class="btn-close" onclick="UI.closeModal('editModal')">&times;</button>
+      </div>
+      <form id="editForm">
+        <input type="hidden" id="editId">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="editTitle">Título / Identificador *</label>
+            <input type="text" id="editTitle" class="form-input" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="editTarget">Nova URL de Destino *</label>
+            <input type="text" id="editTarget" class="form-input" required>
+            <div class="form-hint highlight">
+              ✨ <strong>Efeito Imediato:</strong> O QR Code impresso e seu slug continuam intactos. Apenas o redirecionamento é atualizado instantaneamente para todos os novos scans!
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="UI.closeModal('editModal')">Cancelar</button>
+          <button type="submit" id="btnSubmitEdit" class="btn btn-primary">Salvar Alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Visualizar e Baixar QR Code -->
+  <div id="viewModal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="viewModalTitle">Visualização do QR Code</h2>
+        <button class="btn-close" onclick="UI.closeModal('viewModal')">&times;</button>
+      </div>
+      <div class="modal-body qr-view-container">
+        <img id="viewLargeImage" class="qr-large-img" src="" alt="QR Code Ampliado">
+        
+        <div class="url-box" style="margin-bottom: 12px;">
+          <div class="url-label">Link do QR Code:</div>
+          <a id="viewShortUrl" href="" target="_blank" rel="noopener noreferrer" class="short-link-text" style="font-size: 1rem;"></a>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
+          Imagem gerada pelo servidor Go e decodificada a partir do armazenamento Base32 no MongoDB.
+        </p>
+      </div>
+      <div class="modal-footer" style="justify-content: space-between;">
+        <button type="button" class="btn btn-secondary" onclick="UI.closeModal('viewModal')">Fechar</button>
+        <button type="button" id="btnDownloadPng" class="btn btn-primary">
+          ⬇️ Baixar Imagem (PNG)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Feedback Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/ui.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
